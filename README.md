@@ -25,10 +25,16 @@ Node.js와 MongoDB를 사용하여 구축된 데이터 분석 프로젝트입니
 ### 설치 절차
 
 1. **레포지토리 클론하기**
-   git clone https://github.com/fallkim/web-node.git
-   cd web-node
-2. **Docker를 이용하여 서비스 실행하기**
-   docker-compose up --build
+   ```bash
+   $ git clone https://github.com/fallkim/web-node.git
+   ```
+   ```bash
+   $ cd web-node
+   ```
+3. **Docker를 이용하여 서비스 실행하기**
+   ```bash
+   $ docker-compose up --build
+   ```
 
 ### 사용방법
 
