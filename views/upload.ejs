@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>데이터 업로드</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f2f5;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      h1,
+      h2 {
+        color: #333;
+      }
+
+      form {
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 20px;
+        width: 100%;
+        max-width: 500px;
+      }
+
+      input[type="file"] {
+        margin: 10px 0;
+        padding: 10px;
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+      }
+
+      button {
+        margin: 10px 0;
+        padding: 10px 20px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      button:hover {
+        background-color: #45a049;
+      }
+
+      .button-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 20px;
+        width: 100%;
+      }
+
+      .button {
+        margin: 5px;
+        padding: 10px 20px;
+        background-color: #4caf50;
+        color: white;
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      .button:hover {
+        background-color: #45a049;
+      }
+
+      .active {
+        background-color: #008cba;
+      }
+
+      .chart-type-button {
+        background-color: #ff9800;
+      }
+
+      .chart-type-button:hover {
+        background-color: #e68900;
+      }
+
+      .canvas-container {
+        width: 80%;
+        max-width: 800px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>데이터 파일 업로드</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".txt" required />
+      <button type="submit">업로드</button>
+    </form>
+    <h2>코어, 작업 및 차트 유형 선택</h2>
+    <div class="button-container">
+      <div id="core-buttons" style="margin-bottom: 10px">
+        <!-- Core buttons will be generated here -->
+      </div>
+      <div id="task-buttons" style="margin-bottom: 10px">
+        <!-- Task buttons will be generated here -->
+      </div>
+      <div id="chart-type-buttons">
+        <!-- Chart type buttons will be generated here -->
+      </div>
+    </div>
+    <div class="canvas-container">
+      <canvas id="dataChart"></canvas>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const rawData = <%- JSON.stringify(data) %>;
+        const stats = <%- JSON.stringify(stats) %>;
+
+        const cores = [...new Set(rawData.map(d => d.core))];
+        const tasks = ['task1', 'task2', 'task3', 'task4', 'task5'];
+        const chartTypes = ['bar', 'line', 'radar'];
+
+        const coreButtons = document.getElementById('core-buttons');
+        const taskButtons = document.getElementById('task-buttons');
+        const chartTypeButtons = document.getElementById('chart-type-buttons');
+
+        let selectedCores = new Set(cores);
+        let selectedTasks = new Set(tasks);
+        let selectedChartType = chartTypes[0];
+
+        function createButton(name, container, onClick, isChartTypeButton = false) {
+          const button = document.createElement('button');
+          button.className = isChartTypeButton ? 'button chart-type-button' : 'button';
+          button.innerText = name;
+          button.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (isChartTypeButton) {
+              container.querySelectorAll('.button').forEach(btn => btn.classList.remove('active'));
+              button.classList.add('active');
+              onClick();
+            } else {
+              if (button.classList.contains('active')) {
+                button.classList.remove('active');
+                onClick(false);
+              } else {
+                button.classList.add('active');
+                onClick(true);
+              }
+            }
+          });
+          container.appendChild(button);
+        }
+
+        cores.forEach(core => {
+          createButton(core, coreButtons, (isActive) => {
+            if (isActive) {
+              selectedCores.add(core);
+            } else {
+              selectedCores.delete(core);
+            }
+            updateChart();
+          });
+        });
+
+        tasks.forEach(task => {
+          createButton(task, taskButtons, (isActive) => {
+            if (isActive) {
+              selectedTasks.add(task);
+            } else {
+              selectedTasks.delete(task);
+            }
+            updateChart();
+          });
+        });
+
+        chartTypes.forEach(type => {
+          createButton(type, chartTypeButtons, () => {
+            selectedChartType = type;
+            updateChart();
+          }, true);
+        });
+
+        coreButtons.querySelectorAll('.button').forEach(button => button.classList.add('active'));
+        taskButtons.querySelectorAll('.button').forEach(button => button.classList.add('active'));
+        chartTypeButtons.querySelector('.button').classList.add('active');
+
+        let dataChart;
+
+        function updateChart() {
+          if (dataChart) {
+            dataChart.destroy();
+          }
+
+          const filteredData = rawData.filter(d => selectedCores.has(d.core));
+          const datasets = Array.from(selectedTasks).map(task => ({
+            label: task,
+            data: filteredData.map(d => d[task]),
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+          }));
+
+          const ctx = document.getElementById('dataChart').getContext('2d');
+          dataChart = new Chart(ctx, {
+            type: selectedChartType,
+            data: {
+              labels: filteredData.map(d => d.core),
+              datasets: datasets
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        }
+
+        updateChart();
+      });
+    </script>
+  </body>
+</html>
